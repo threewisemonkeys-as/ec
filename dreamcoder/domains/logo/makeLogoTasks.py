@@ -3,6 +3,9 @@
 import os
 import random
 import sys
+from pathlib import Path
+import numpy as np
+from PIL import Image
 
 from dreamcoder.domains.logo.logoPrimitives import primitives, turtle
 from dreamcoder.task import Task
@@ -52,7 +55,8 @@ def drawLogo(*programs,
     return response
 
 def makeTasks(subfolders, proto):
-    return manualLogoTasks()
+    # return manualLogoTasks()
+    return load_bongard_logo_tasks("/home/antpc/Works/dreamcoder/Bongard-LOGO/examples/00-rectangle_vs_circle/demo/png")
 
 def parseLogo(s):
         
@@ -267,7 +271,27 @@ def rotationalSymmetryDemo():
               (embed %s)
               (move 0d (/a 1a %d)))"""%(n,body[name],n))
     return demos
-              
+
+
+def load_bongard_logo_image_as_task(path, name="bongard_logo_task", regular_res=(28, 28), high_res=(128, 128)):
+
+    img = Image.open(path).convert("L")
+    regular_res = np.asarray(img.resize(regular_res)).reshape(-1).astype(np.int).tolist()
+    high_res = np.asarray(img.resize(high_res)).reshape(-1).astype(np.float).tolist()
+
+    t = Task(name, arrow(turtle,turtle),
+            [(([0]), regular_res)])
+    t.mustTrain = True
+    t.highresolution = high_res
+
+    # t.specialTask = ("LOGO", {"proto": False})
+    # t.specialTask[1]["cost"] = 0
+
+    return t
+
+def load_bongard_logo_tasks(path):
+    return [load_bongard_logo_image_as_task(path=p) for p in Path(path).glob("**/*.png")]
+
 
 def manualLogoTasks():
     tasks = []
@@ -711,8 +735,10 @@ def montageTasks(tasks, prefix="", columns=None, testTrain=False):
               for a in arrays]
     i = montage(arrays, columns=columns)
 
-    import scipy.misc        
-    scipy.misc.imsave('/tmp/%smontage.png'%prefix, i)
+    #import scipy.misc        
+    #scipy.misc.imsave('/tmp/%smontage.png'%prefix, i)
+    import imageio
+    imageio.imwrite('/tmp/%smontage.png'%prefix, i)
     if testTrain:
         trainingTasks = arrays[:sum(t.mustTrain for t in tasks)]
         testingTasks = arrays[sum(t.mustTrain for t in tasks):]
@@ -721,7 +747,7 @@ def montageTasks(tasks, prefix="", columns=None, testTrain=False):
         arrays = trainingTasks + testingTasks
     else:
         random.shuffle(arrays)
-    scipy.misc.imsave('/tmp/%srandomMontage.png'%prefix, montage(arrays, columns=columns))
+    imageio.imwrite('/tmp/%srandomMontage.png'%prefix, montage(arrays, columns=columns))
 
 def demoLogoTasks():
     import scipy.misc

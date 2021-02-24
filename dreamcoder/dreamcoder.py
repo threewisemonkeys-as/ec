@@ -1,4 +1,5 @@
 import datetime
+import sys
 
 import dill
 
@@ -418,6 +419,9 @@ def ecIterator(grammar, tasks,
         result.hitsAtEachWake.append(len(tasksHitTopDown))
 
         reportMemory()
+        
+        if outputPrefix is not None:
+            graphPrimitives(result, "%s_stage1_primitives_%d_"%(outputPrefix,j))
 
         # Combine topDownFrontiers from this task batch with all frontiers.
         for f in topDownFrontiers:
@@ -426,6 +430,8 @@ def ecIterator(grammar, tasks,
 
         eprint("Frontiers discovered top down: " + str(len(tasksHitTopDown)))
         eprint("Total frontiers: " + str(len([f for f in result.allFrontiers.values() if not f.empty])))
+
+        print_frontiers_top_k(result)
 
         # Train + use recognition model
         if useRecognitionModel:
@@ -462,6 +468,9 @@ def ecIterator(grammar, tasks,
                                                                  if len(f) > 0},
                                  'frontier')                
         
+        if outputPrefix is not None:
+            graphPrimitives(result, "%s_stage2_primitives_%d_"%(outputPrefix,j))
+        
         # Sleep-G
         if useDSL and not(noConsolidation):
             eprint(f"Currently using this much memory: {getThisMemoryUsage()}")
@@ -487,6 +496,7 @@ def ecIterator(grammar, tasks,
 
             graphPrimitives(result, "%s_primitives_%d_"%(outputPrefix,j))
             
+        print(f"\n\nIteration {j} result - \n{result}\n\n")
 
         yield result
 
@@ -665,14 +675,17 @@ def sleep_recognition(result, grammar, taskBatch, tasks, testingTasks, allFronti
 
 def consolidate(result, grammar, _=None, topK=None, arity=None, pseudoCounts=None, aic=None,
                 structurePenalty=None, compressor=None, CPUs=None, iteration=None):
-    eprint("Showing the top 5 programs in each frontier being sent to the compressor:")
-    for f in result.allFrontiers.values():
-        if f.empty:
-            continue
-        eprint(f.task)
-        for e in f.normalize().topK(5):
-            eprint("%.02f\t%s" % (e.logPosterior, e.program))
-        eprint()
+    # eprint("Showing the top 5 programs in each frontier being sent to the compressor:")
+    # for f in result.allFrontiers.values():
+    #     if f.empty:
+    #         continue
+    #     eprint(f.task)
+    #     for e in f.normalize().topK(5):
+    #         eprint("%.02f\t%s" % (e.logPosterior, e.program))
+    #     eprint()
+
+    eprint("Frontiers going to compressor -")
+    print_frontiers_top_k(result, 5)
 
     # First check if we have supervision at the program level for any task that was not solved
     needToSupervise = {f.task for f in result.allFrontiers.values()
@@ -699,7 +712,17 @@ def consolidate(result, grammar, _=None, topK=None, arity=None, pseudoCounts=Non
     eprint(grammar)
     
     return grammar
-    
+
+
+def print_frontiers_top_k(result, k=5):
+    eprint(f"Showing the top {k} programs in each frontier")
+    for f in result.allFrontiers.values():
+        if f.empty:
+            continue
+        eprint(f.task)
+        for e in f.normalize().topK(k):
+            eprint("%.02f\t%s" % (e.logPosterior, e.program))
+        eprint()
 
 
 def commandlineArguments(_=None,

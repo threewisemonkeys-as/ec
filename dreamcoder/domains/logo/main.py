@@ -381,9 +381,10 @@ def main(args):
 
     costMatters = args.pop("cost")
     for t in tasks:
-        t.specialTask[1]["costMatters"] = costMatters
-        # disgusting hack - include whether cost matters in the dummy input
-        if costMatters: t.examples = [(([1]), t.examples[0][1])]
+        if hasattr(t, "specialTask"):
+            t.specialTask[1]["costMatters"] = costMatters
+            # disgusting hack - include whether cost matters in the dummy input
+            if costMatters: t.examples = [(([1]), t.examples[0][1])]
 
     os.chdir("prototypical-networks")
     subprocess.Popen(["python","./protonet_server.py"])
